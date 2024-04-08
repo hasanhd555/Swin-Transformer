@@ -18,6 +18,7 @@ import torch.backends.cudnn as cudnn
 import torch.distributed as dist
 
 from timm.loss import LabelSmoothingCrossEntropy, SoftTargetCrossEntropy
+
 from timm.utils import accuracy, AverageMeter
 
 from config import get_config
@@ -119,6 +120,8 @@ def main(config):
         criterion = LabelSmoothingCrossEntropy(smoothing=config.MODEL.LABEL_SMOOTHING)
     else:
         criterion = torch.nn.CrossEntropyLoss()
+    #MSE to criterion
+    criterion = torch.nn.MSELoss()
 
     max_accuracy = 0.0
 

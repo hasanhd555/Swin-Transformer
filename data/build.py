@@ -95,31 +95,78 @@ def build_loader(config):
     return dataset_train, dataset_val, data_loader_train, data_loader_val, mixup_fn
 
 
-def build_dataset(is_train, config):
-    transform = build_transform(is_train, config)
-    if config.DATA.DATASET == 'imagenet':
-        prefix = 'train' if is_train else 'val'
-        if config.DATA.ZIP_MODE:
-            ann_file = prefix + "_map.txt"
-            prefix = prefix + ".zip@/"
-            dataset = CachedImageFolder(config.DATA.DATA_PATH, ann_file, prefix, transform,
-                                        cache_mode=config.DATA.CACHE_MODE if is_train else 'part')
-        else:
-            root = os.path.join(config.DATA.DATA_PATH, prefix)
-            dataset = datasets.ImageFolder(root, transform=transform)
-        nb_classes = 1000
-    elif config.DATA.DATASET == 'imagenet22K':
-        prefix = 'ILSVRC2011fall_whole'
-        if is_train:
-            ann_file = prefix + "_map_train.txt"
-        else:
-            ann_file = prefix + "_map_val.txt"
-        dataset = IN22KDATASET(config.DATA.DATA_PATH, ann_file, transform)
-        nb_classes = 21841
-    else:
-        raise NotImplementedError("We only support ImageNet Now.")
+# def build_dataset(is_train, config):
+#     transform = build_transform(is_train, config)
+#     if config.DATA.DATASET == 'imagenet':
+#         prefix = 'train' if is_train else 'val'
+#         if config.DATA.ZIP_MODE:
+#             ann_file = prefix + "_map.txt"
+#             prefix = prefix + ".zip@/"
+#             dataset = CachedImageFolder(config.DATA.DATA_PATH, ann_file, prefix, transform,
+#                                         cache_mode=config.DATA.CACHE_MODE if is_train else 'part')
+#         else:
+#             root = os.path.join(config.DATA.DATA_PATH, prefix)
+#             dataset = datasets.ImageFolder(root, transform=transform)
+#         nb_classes = 1000
+#     elif config.DATA.DATASET == 'imagenet22K':
+#         prefix = 'ILSVRC2011fall_whole'
+#         if is_train:
+#             ann_file = prefix + "_map_train.txt"
+#         else:
+#             ann_file = prefix + "_map_val.txt"
+#         dataset = IN22KDATASET(config.DATA.DATA_PATH, ann_file, transform)
+#         nb_classes = 21841
+#     else:
+#         raise NotImplementedError("We only support ImageNet Now.")
 
-    return dataset, nb_classes
+#     return dataset, nb_classes
+
+
+def build_dataset(is_train, config):
+  """
+  This function builds a dataset object based on the configuration and training/validation split.
+
+  Args:
+      is_train (bool): Whether to load the training or validation set.
+      config (dict): Configuration dictionary with dataset parameters.
+
+  Returns:
+      torch.utils.data.Dataset: The loaded dataset object.
+  """
+
+  # Define data directory based on training/validation split
+  data_dir = os.path.join(config.DATA.DATA_PATH, "Outdoor" if is_train else "val")
+
+  # Define subfolder names for ground truth and hazy images
+  gt_dir = "GT"
+  hazy_dir = "hazy"
+
+  # Define transformations (replace with your specific transformations)
+  transform = build_transform(config)
+
+  if config.DATA.DATASET == "custom":
+    # Custom dataset logic
+    if is_train:
+      # Load training data from GT and hazy folders
+      data_dir = os.path.join(data_dir, "train")
+      train_gt_data = datasets.ImageFolder(os.path.join(data_dir, gt_dir), transform=transform)
+      train_hazy_data = datasets.ImageFolder(os.path.join(data_dir, hazy_dir), transform=transform)
+
+      # Combine GT and hazy data into a single dataset (modify based on your needs)
+      dataset = torch.utils.data.dataset.ConcatDataset([train_gt_data, train_hazy_data])
+    else:
+      # Load validation data from GT and hazy folders (similar logic)
+      data_dir = os.path.join(data_dir, "test")
+      val_gt_data = datasets.ImageFolder(os.path.join(data_dir, gt_dir), transform=transform)
+      val_hazy_data = datasets.ImageFolder(os.path.join(data_dir, hazy_dir), transform=transform)
+      dataset = torch.utils.data.dataset.ConcatDataset([val_gt_data, val_hazy_data])
+  else:
+    raise NotImplementedError("Currently only custom dataset (DATASET='custom') is supported.")
+
+  # Assuming two classes (GT and hazy) for your custom dataset
+  nb_classes = 2
+
+  return dataset, nb_classes
 
 
 def build_transform(is_train, config):
